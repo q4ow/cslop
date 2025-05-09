@@ -7,14 +7,21 @@
 const char *argp_program_version = BINARY_VERSION;
 const char *argp_program_bug_address = "q4ow@proton.me";
 
-static char doc[] = "CSLOP -- A sloppy archive extractor";
+static char doc[] = "CSLOP -- A smart archive extractor that handles various archive formats\v"
+                  "Archive files can be of any supported type (zip, tar, gz, bz2, xz, 7z, rar).\n"
+                  "Multiple archives can be extracted at once.";
 
-static char args_doc[] = "[ARGS...]";
+static char args_doc[] = "ARCHIVE...";
 
 static struct argp_option options[] = {
-    {"verbose", 'v', 0, 0, "Produce verbose output", 0},
-    {"quiet",   'q', 0, 0, "Don't produce any output", 0},
-    {"output",  'o', "FILE", 0, "Output to FILE instead of standard output", 0},
+    {"directory",    'd', "DIR",  0, "Extract files into DIR", 1},
+    {"no-directory", 'n', 0,      0, "Do not create a subdirectory for extraction", 1},
+    {"preserve",     'p', 0,      0, "Preserve original file permissions", 1},
+    {"overwrite",    'f', 0,      0, "Force overwrite of existing files", 1},
+    
+    {0,             0,   0,      0, "Output control:", 2},
+    {"verbose",     'v', 0,      0, "Show detailed progress information", 2},
+    {"quiet",       'q', 0,      0, "Suppress all non-error output", 2},
     {0}
 };
 
@@ -28,8 +35,17 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'q':
             arguments->quiet = 1;
             break;
-        case 'o':
-            arguments->output_file = arg;
+        case 'd':
+            arguments->output_dir = arg;
+            break;
+        case 'n':
+            arguments->no_subdirectory = 1;
+            break;
+        case 'p':
+            arguments->preserve_perms = 1;
+            break;
+        case 'f':
+            arguments->overwrite = 1;
             break;
         case ARGP_KEY_ARG:
             arguments->args = &state->argv[state->next - 1];
@@ -49,7 +65,10 @@ static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 void init_cli(int argc, char *argv[], struct arguments *arguments) {
     arguments->verbose = 0;
     arguments->quiet = 0;
-    arguments->output_file = NULL;
+    arguments->output_dir = NULL;
+    arguments->no_subdirectory = 0;
+    arguments->preserve_perms = 0;
+    arguments->overwrite = 0;
     arguments->args = NULL;
     arguments->arg_count = 0;
 

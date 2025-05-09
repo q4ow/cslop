@@ -6,7 +6,10 @@
 struct arguments {
     int verbose;
     int quiet;
-    char *output_file;
+    char *output_dir;
+    int no_subdirectory;
+    int preserve_perms;
+    int overwrite;
     char **args;
     int arg_count;
 };

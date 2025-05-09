@@ -23,6 +23,7 @@ src_files = [
   'src/main.c',
   'src/cli/cli.c',
   'src/cli/format.c',
+  'src/cli/archive.c',
 ]
 
 executable(
