@@ -28,58 +28,62 @@ static struct argp_option options[] = {
     {0}};
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-  struct arguments *arguments = state->input;
+    struct arguments *arguments = state->input;
 
-  switch (key) {
-  case 'v':
-    arguments->verbose = 1;
-    break;
-  case 'q':
-    arguments->quiet = 1;
-    break;
-  case 'd':
-    arguments->output_dir = arg;
-    break;
-  case 'n':
-    arguments->no_subdirectory = 1;
-    break;
-  case 'p':
-    arguments->preserve_perms = 1;
-    break;
-  case 'f':
-    arguments->overwrite = 1;
-    break;
-  case ARGP_KEY_ARG:
-    arguments->args = &state->argv[state->next - 1];
-    arguments->arg_count = state->argc - state->next + 1;
-    state->next = state->argc;
-    break;
-  case ARGP_KEY_END:
-    break;
-  default:
-    return ARGP_ERR_UNKNOWN;
-  }
-  return 0;
+    switch (key) {
+    case 'v':
+        arguments->verbose = 1;
+        break;
+    case 'q':
+        arguments->quiet = 1;
+        break;
+    case 'd':
+        arguments->output_dir = arg;
+        break;
+    case 'n':
+        arguments->no_subdirectory = 1;
+        break;
+    case 'p':
+        arguments->preserve_perms = 1;
+        break;
+    case 'f':
+        arguments->overwrite = 1;
+        break;
+    case ARGP_KEY_ARG:
+        arguments->args = &state->argv[state->next - 1];
+        arguments->arg_count = state->argc - state->next + 1;
+        state->next = state->argc;
+        break;
+    case ARGP_KEY_END:
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+    return 0;
 }
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
 void init_cli(int argc, char *argv[], struct arguments *arguments) {
-  arguments->verbose = 0;
-  arguments->quiet = 0;
-  arguments->output_dir = NULL;
-  arguments->no_subdirectory = 0;
-  arguments->preserve_perms = 0;
-  arguments->overwrite = 0;
-  arguments->args = NULL;
-  arguments->arg_count = 0;
+    arguments->verbose = 0;
+    arguments->quiet = 0;
+    arguments->output_dir = NULL;
+    arguments->no_subdirectory = 0;
+    arguments->preserve_perms = 0;
+    arguments->overwrite = 0;
+    arguments->args = NULL;
+    arguments->arg_count = 0;
 
-  argp_parse(&argp, argc, argv, 0, 0, arguments);
+    argp_parse(&argp, argc, argv, 0, 0, arguments);
 }
 
-void print_program_header(void) {
-  print_title(BINARY_NAME);
-  print_info("Version", BINARY_VERSION);
-  print_info("Author", BINARY_AUTHOR);
-  printf("\n");
+void print_program_header(const struct arguments *args) {
+    print_title(BINARY_NAME);
+
+    if (args->verbose) {
+        print_info("Version", BINARY_VERSION);
+        print_info("Author", BINARY_AUTHOR);
+    }
+
+    printf("\n");
 }

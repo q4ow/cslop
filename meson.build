@@ -1,10 +1,9 @@
-project('cslop', 'c', version: '0.1.0')
+project('cslop', 'c', version: '0.1.1')
 
 binary_name = 'cslop'
-binary_version = '0.1.0'
+binary_version = '0.1.1'
 binary_author = 'Keiran'
 
-# Generate version.h from template
 configure_file(
   input: 'version.h.in',
   output: 'version.h',
@@ -15,10 +14,8 @@ configure_file(
   }
 )
 
-# Include directories
 inc_dir = include_directories('include')
 
-# Source files
 src_files = [
   'src/main.c',
   'src/cli/cli.c',

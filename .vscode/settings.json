@@ -1,0 +1,5 @@
+{
+    "C_Cpp.default.compilerPath": "/sbin/clang",
+    "C_Cpp.default.compileCommands": "/home/keiran/code/c/cslop/builddir/compile_commands.json",
+    "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
+}
