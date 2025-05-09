@@ -1,0 +1,8 @@
+#ifndef VERSION_H
+#define VERSION_H
+
+#define BINARY_NAME "@BINARY_NAME@"
+#define BINARY_VERSION "@BINARY_VERSION@"
+#define BINARY_AUTHOR "@BINARY_AUTHOR@"
+
+#endif
