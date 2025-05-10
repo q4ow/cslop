@@ -11,10 +11,10 @@
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
-void print_title(const char *title);
-void print_info(const char *label, const char *value);
-void print_success(const char *message);
-void print_warning(const char *message);
-void print_error(const char *message);
+int print_title(const char *title);
+int print_info(const char *label, const char *value);
+int print_success(const char *message);
+int print_warning(const char *message);
+int print_error(const char *message);
 
 #endif

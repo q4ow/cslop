@@ -14,7 +14,7 @@ struct arguments {
     int arg_count;
 };
 
-void init_cli(int argc, char *argv[], struct arguments *arguments);
+int init_cli(int argc, char *argv[], struct arguments *arguments);
 
 void print_program_header(const struct arguments *args);
 

@@ -1,7 +1,7 @@
-project('cslop', 'c', version: '0.1.1')
+project('cslop', 'c', version: '0.1.2')
 
 binary_name = 'cslop'
-binary_version = '0.1.1'
+binary_version = '0.1.2'
 binary_author = 'Keiran'
 
 configure_file(

@@ -130,8 +130,40 @@ static char *create_extraction_dir(const char *archive_path,
     return dir;
 }
 
+static char *escape_shell_arg(const char *arg) {
+    size_t len = strlen(arg);
+    size_t escaped_len = len * 2 + 3;
+    char *escaped = malloc(escaped_len);
+    if (!escaped)
+        return NULL;
+
+    char *dst = escaped;
+    *dst++ = '\'';
+
+    for (const char *src = arg; *src; src++) {
+        if (*src == '\'') {
+            *dst++ = '\'';
+            *dst++ = '\\';
+            *dst++ = '\'';
+            *dst++ = '\'';
+        } else {
+            *dst++ = *src;
+        }
+    }
+
+    *dst++ = '\'';
+    *dst = '\0';
+
+    return escaped;
+}
+
 int extract_archive(const char *filename,
                     const struct extract_options *options) {
+    if (!filename || !options) {
+        print_error("Invalid arguments");
+        return -1;
+    }
+
     archive_type_t type = detect_archive_type(filename);
     if (type == ARCHIVE_TYPE_UNKNOWN) {
         print_error("Unknown archive type");
@@ -142,73 +174,124 @@ int extract_archive(const char *filename,
     if (!extract_dir)
         return -1;
 
-    char command[1024];
+    char *escaped_filename = escape_shell_arg(filename);
+    char *escaped_extract_dir = escape_shell_arg(extract_dir);
+
+    if (!escaped_filename || !escaped_extract_dir) {
+        print_error("Memory allocation failed");
+        free(extract_dir);
+        free(escaped_filename);
+        free(escaped_extract_dir);
+        return -1;
+    }
+
+    char *command = NULL;
+    size_t command_size = 1024;
+    command = malloc(command_size);
+
+    if (!command) {
+        print_error("Memory allocation failed");
+        free(extract_dir);
+        free(escaped_filename);
+        free(escaped_extract_dir);
+        return -1;
+    }
+
     int success = 0;
 
     switch (type) {
     case ARCHIVE_TYPE_ZIP:
-        snprintf(command, sizeof(command), "unzip %s %s -d %s",
-                 options->overwrite ? "-o" : "-n", filename, extract_dir);
+        snprintf(command, command_size, "unzip %s %s -d %s",
+                 options->overwrite ? "-o" : "-n", escaped_filename,
+                 escaped_extract_dir);
         break;
 
     case ARCHIVE_TYPE_TAR:
-        snprintf(command, sizeof(command), "tar %s -xf %s -C %s",
+        snprintf(command, command_size, "tar %s -xf %s -C %s",
                  options->preserve_permissions ? "" : "--no-same-permissions",
-                 filename, extract_dir);
+                 escaped_filename, escaped_extract_dir);
         break;
 
     case ARCHIVE_TYPE_GZIP:
         if (strstr(filename, ".tar.gz") || strstr(filename, ".tgz")) {
-            snprintf(command, sizeof(command),
-                     "mkdir -p %s && tar %s -xzf %s -C %s", extract_dir,
+            snprintf(command, command_size,
+                     "mkdir -p %s && tar %s -xzf %s -C %s", escaped_extract_dir,
                      options->preserve_permissions ? ""
                                                    : "--no-same-permissions",
-                     filename, extract_dir);
+                     escaped_filename, escaped_extract_dir);
         } else {
             char *out_name = strip_archive_extensions(filename);
-            snprintf(command, sizeof(command), "gunzip -c %s > %s/%s", filename,
-                     extract_dir, out_name);
+            char *escaped_out_name = escape_shell_arg(out_name);
+            snprintf(command, command_size, "gunzip -c %s > %s/%s",
+                     escaped_filename, escaped_extract_dir,
+                     escaped_out_name ? escaped_out_name : "output.gz");
             free(out_name);
+            free(escaped_out_name);
         }
         break;
 
     case ARCHIVE_TYPE_BZIP2:
         if (strstr(filename, ".tar.bz2") || strstr(filename, ".tbz2")) {
-            snprintf(command, sizeof(command), "tar %s -xjf %s -C %s",
+            snprintf(command, command_size, "tar %s -xjf %s -C %s",
                      options->preserve_permissions ? ""
                                                    : "--no-same-permissions",
-                     filename, extract_dir);
+                     escaped_filename, escaped_extract_dir);
         } else {
-            snprintf(command, sizeof(command), "bunzip2 -c %s > %s/%s",
-                     filename, extract_dir, basename((char *)filename));
+            char *out_name = strip_archive_extensions(filename);
+            char *escaped_out_name = escape_shell_arg(out_name);
+            if (!escaped_out_name) {
+                snprintf(command, command_size, "bunzip2 -c %s > %s/output.bz2",
+                         escaped_filename, escaped_extract_dir);
+            } else {
+                snprintf(command, command_size, "bunzip2 -c %s > %s/%s",
+                         escaped_filename, escaped_extract_dir,
+                         escaped_out_name);
+            }
+            free(out_name);
+            free(escaped_out_name);
         }
         break;
 
     case ARCHIVE_TYPE_XZ:
-        if (strstr(filename, ".tar.xz")) {
-            snprintf(command, sizeof(command), "tar %s -xJf %s -C %s",
+        if (strstr(filename, ".tar.xz") || strstr(filename, ".txz")) {
+            snprintf(command, command_size, "tar %s -xJf %s -C %s",
                      options->preserve_permissions ? ""
                                                    : "--no-same-permissions",
-                     filename, extract_dir);
+                     escaped_filename, escaped_extract_dir);
         } else {
-            snprintf(command, sizeof(command), "unxz -c %s > %s/%s", filename,
-                     extract_dir, basename((char *)filename));
+            char *out_name = strip_archive_extensions(filename);
+            char *escaped_out_name = escape_shell_arg(out_name);
+            if (!escaped_out_name) {
+                snprintf(command, command_size, "unxz -c %s > %s/output.xz",
+                         escaped_filename, escaped_extract_dir);
+            } else {
+                snprintf(command, command_size, "unxz -c %s > %s/%s",
+                         escaped_filename, escaped_extract_dir,
+                         escaped_out_name);
+            }
+            free(out_name);
+            free(escaped_out_name);
         }
         break;
 
     case ARCHIVE_TYPE_7Z:
-        snprintf(command, sizeof(command), "7z x %s -o%s", filename,
-                 extract_dir);
+        snprintf(command, command_size, "7z x %s%s -o%s",
+                 options->overwrite ? "-y " : "", escaped_filename,
+                 escaped_extract_dir);
         break;
 
     case ARCHIVE_TYPE_RAR:
-        snprintf(command, sizeof(command), "unrar x %s %s", filename,
-                 extract_dir);
+        snprintf(command, command_size, "unrar x %s%s %s",
+                 options->overwrite ? "-o+ " : "", escaped_filename,
+                 escaped_extract_dir);
         break;
 
     default:
         print_error("Unsupported archive type");
+        free(command);
         free(extract_dir);
+        free(escaped_filename);
+        free(escaped_extract_dir);
         return -1;
     }
 
@@ -223,6 +306,9 @@ int extract_archive(const char *filename,
         success = 0;
     }
 
+    free(command);
     free(extract_dir);
+    free(escaped_filename);
+    free(escaped_extract_dir);
     return success ? 0 : -1;
 }

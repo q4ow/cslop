@@ -1,8 +1,12 @@
 #include "../include/cli.h"
 #include "../include/format.h"
 #include "version.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 const char *argp_program_version = BINARY_VERSION;
 const char *argp_program_bug_address = "q4ow@proton.me";
@@ -29,6 +33,8 @@ static struct argp_option options[] = {
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
+    if (!arguments)
+        return ARGP_ERR_UNKNOWN;
 
     switch (key) {
     case 'v':
@@ -38,6 +44,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         arguments->quiet = 1;
         break;
     case 'd':
+        if (!arg)
+            return ARGP_ERR_UNKNOWN;
         arguments->output_dir = arg;
         break;
     case 'n':
@@ -55,6 +63,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         state->next = state->argc;
         break;
     case ARGP_KEY_END:
+        if (state->arg_num < 1) {
+            argp_usage(state);
+        }
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -64,20 +75,39 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
 static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
-void init_cli(int argc, char *argv[], struct arguments *arguments) {
-    arguments->verbose = 0;
-    arguments->quiet = 0;
-    arguments->output_dir = NULL;
-    arguments->no_subdirectory = 0;
-    arguments->preserve_perms = 0;
-    arguments->overwrite = 0;
-    arguments->args = NULL;
-    arguments->arg_count = 0;
+int init_cli(int argc, char *argv[], struct arguments *arguments) {
+    if (!arguments || !argv) {
+        return -1;
+    }
 
-    argp_parse(&argp, argc, argv, 0, 0, arguments);
+    memset(arguments, 0, sizeof(struct arguments));
+
+    error_t result = argp_parse(&argp, argc, argv, 0, 0, arguments);
+    if (result != 0) {
+        return -1;
+    }
+
+    if (arguments->verbose && arguments->quiet) {
+        print_error("Cannot use both --verbose and --quiet");
+        return -1;
+    }
+
+    if (arguments->output_dir) {
+        if (access(arguments->output_dir, F_OK) != 0) {
+            if (mkdir(arguments->output_dir, 0755) != 0) {
+                print_error(strerror(errno));
+                return -1;
+            }
+        }
+    }
+
+    return 0;
 }
 
 void print_program_header(const struct arguments *args) {
+    if (!args || args->quiet)
+        return;
+
     print_title(BINARY_NAME);
 
     if (args->verbose) {
